@@ -1,8 +1,12 @@
 ﻿#include <windows.h>
 #include <cmath>
+#include <cstdlib>
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
+int clientWidth = WIDTH;
+int clientHeight = HEIGHT;
+bool collided = false;
 
 struct Ball {
     float x, y;   // 중심 좌표
@@ -17,13 +21,19 @@ Ball balls[2] = {
 };
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    if (msg == WM_SIZE) {
+        clientWidth = LOWORD(lParam);
+        clientHeight = HIWORD(lParam);
+    }
     if (msg == WM_PAINT) {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
 
         // 배경 지우기
         RECT rc; GetClientRect(hwnd, &rc);
-        FillRect(hdc, &rc, (HBRUSH)(COLOR_WINDOW + 1));
+        HBRUSH bgBrush = CreateSolidBrush(RGB(20, 20, 35));
+        FillRect(hdc, &rc, bgBrush);
+        DeleteObject(bgBrush);
 
         // 공 그리기
         for (auto& b : balls) {
@@ -48,7 +58,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     RegisterClass(&wc);
 
-    HWND hwnd = CreateWindow(L"PhysicsDemo", L"Physics Demo - Day1",
+    HWND hwnd = CreateWindow(L"PhysicsDemo", L"Physics Demo - Day2",
         WS_OVERLAPPEDWINDOW, 100, 100, WIDTH, HEIGHT,
         NULL, NULL, hInstance, NULL);
 
@@ -62,6 +72,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
             DispatchMessage(&msg);
         }
 
+        // 중력
+        const float GRAVITY = 0.3f;
+        for (auto& b : balls) {
+            b.vy += GRAVITY;
+        }
+
         // 물체 이동
         for (auto& b : balls) {
             b.x += b.vx;
@@ -70,8 +86,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
 
         // 벽 충돌
         for (auto& b : balls) {
-            if (b.x - b.r < 0 || b.x + b.r > WIDTH) b.vx *= -1;
-            if (b.y - b.r < 0 || b.y + b.r > HEIGHT) b.vy *= -1;
+            if (b.x - b.r < 0) { b.x = b.r; b.vx *= -0.85f; }
+            if (b.x + b.r > clientWidth) { b.x = clientWidth - b.r; b.vx *= -0.85; }
+            if (b.y - b.r < 0) { b.y = b.r; b.vy *= -0.85f; }
+            if (b.y + b.r > clientHeight) { b.y = clientHeight - b.r; b.vy *= -0.85; }
         }
 
         // 공끼리 충돌
@@ -79,6 +97,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         float dy = balls[1].y - balls[0].y;
         float dist = sqrtf(dx * dx + dy * dy);
         if (dist < balls[0].r + balls[1].r && dist > 0) {
+
+            if (!collided) {
+                // 충돌 시 색상 랜덤 변경
+                balls[0].color = RGB(rand() % 255, rand() % 255, rand() % 255);
+                balls[1].color = RGB(rand() % 255, rand() % 255, rand() % 255);
+                collided = true;
+            }
+
             // 충돌 법선 벡터 (단위 벡터)
             float nx = dx / dist;
             float ny = dy / dist;
@@ -104,6 +130,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
                 balls[1].x += overlap * nx;
                 balls[1].y += overlap * ny;
             }
+        }
+        else {
+            collided = false;
         }
 
         InvalidateRect(hwnd, NULL, FALSE);
