@@ -15,9 +15,11 @@ struct Ball {
     COLORREF color;
 };
 
-Ball balls[2] = {
-    { 150, 300, 3.0f, 0, 50, RGB(220, 50, 50) },   // 빨강: 오른쪽으로 이동
-    { 650, 300, -3.0f, 0, 50, RGB(50, 100, 220) },  // 파랑: 왼쪽으로 이동
+Ball balls[4] = {
+    { 150, 300,  3.0f, -2.0f, 60, RGB(220, 50, 50) },   // 큰 공
+    { 650, 300, -3.0f, -1.0f, 30, RGB(50, 100, 220) },   // 작은 공
+    { 400, 100,  1.5f,  2.0f, 45, RGB(50, 200, 100) },   // 중간 공
+    { 300, 450, -2.0f, -2.5f, 25, RGB(220, 180, 50) },   // 작은 공
 };
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -87,52 +89,43 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         // 벽 충돌
         for (auto& b : balls) {
             if (b.x - b.r < 0) { b.x = b.r; b.vx *= -0.85f; }
-            if (b.x + b.r > clientWidth) { b.x = clientWidth - b.r; b.vx *= -0.85; }
+            if (b.x + b.r > clientWidth) { b.x = clientWidth - b.r; b.vx *= -0.85f; }
             if (b.y - b.r < 0) { b.y = b.r; b.vy *= -0.85f; }
-            if (b.y + b.r > clientHeight) { b.y = clientHeight - b.r; b.vy *= -0.85; }
-        }
-
-        // 공끼리 충돌
-        float dx = balls[1].x - balls[0].x;
-        float dy = balls[1].y - balls[0].y;
-        float dist = sqrtf(dx * dx + dy * dy);
-        if (dist < balls[0].r + balls[1].r && dist > 0) {
-
-            if (!collided) {
-                // 충돌 시 색상 랜덤 변경
-                balls[0].color = RGB(rand() % 255, rand() % 255, rand() % 255);
-                balls[1].color = RGB(rand() % 255, rand() % 255, rand() % 255);
-                collided = true;
-            }
-
-            // 충돌 법선 벡터 (단위 벡터)
-            float nx = dx / dist;
-            float ny = dy / dist;
-
-            // 상대 속도
-            float dvx = balls[0].vx - balls[1].vx;
-            float dvy = balls[0].vy - balls[1].vy;
-
-            // 법선 방향 상대 속도
-            float dot = dvx * nx + dvy * ny;
-
-            // 이미 멀어지고 있으면 스킵
-            if (dot > 0) {
-                balls[0].vx -= dot * nx;
-                balls[0].vy -= dot * ny;
-                balls[1].vx += dot * nx;
-                balls[1].vy += dot * ny;
-
-                // 겹침 해소
-                float overlap = (balls[0].r + balls[1].r - dist) / 2.0f;
-                balls[0].x -= overlap * nx;
-                balls[0].y -= overlap * ny;
-                balls[1].x += overlap * nx;
-                balls[1].y += overlap * ny;
+            if (b.y + b.r > clientHeight) {
+                b.y = clientHeight - b.r;
+                b.vy *= -0.85f;
+                b.vx *= 0.92f;  // 바닥 마찰력
             }
         }
-        else {
-            collided = false;
+
+        // 공끼리 충돌 (모든 조합)
+        for (int i = 0; i < 4; i++) {
+            for (int j = i + 1; j < 4; j++) {
+                float dx = balls[j].x - balls[i].x;
+                float dy = balls[j].y - balls[i].y;
+                float dist = sqrtf(dx * dx + dy * dy);
+                if (dist < balls[i].r + balls[j].r && dist > 0) {
+                    float nx = dx / dist;
+                    float ny = dy / dist;
+                    float dvx = balls[i].vx - balls[j].vx;
+                    float dvy = balls[i].vy - balls[j].vy;
+                    float dot = dvx * nx + dvy * ny;
+                    if (dot > 0) {
+                        balls[i].vx -= dot * nx;
+                        balls[i].vy -= dot * ny;
+                        balls[j].vx += dot * nx;
+                        balls[j].vy += dot * ny;
+                        float overlap = (balls[i].r + balls[j].r - dist) / 2.0f;
+                        balls[i].x -= overlap * nx;
+                        balls[i].y -= overlap * ny;
+                        balls[j].x += overlap * nx;
+                        balls[j].y += overlap * ny;
+
+                        balls[i].color = RGB(rand() % 255, rand() % 255, rand() % 255);
+                        balls[j].color = RGB(rand() % 255, rand() % 255, rand() % 255);
+                    }
+                }
+            }
         }
 
         InvalidateRect(hwnd, NULL, FALSE);
