@@ -43,12 +43,12 @@ overlap = (r1 + r2 - dist) / 2
 
 ## 빌드 환경
 
-- Visual Studio 2022
+- Visual Studio 2026
 - C++17
 - Windows API (Win32 / GDI)
 
 ## 빌드 방법
 
-1. `PhysicsDemo.sln` 열기
+1. `PhysicsDemo.slnx` 열기
 2. 구성: `Release / x64`
 3. 빌드 실행
